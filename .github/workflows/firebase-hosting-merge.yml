@@ -1,6 +1,6 @@
-# This workflow is triggered on pushes to the main branch.
-name: Deploy to Firebase Hosting on merge
-'on':
+name: Deploy to Firebase Hosting on Merge
+
+on:
   push:
     branches:
       - main
@@ -9,19 +9,25 @@ jobs:
   build_and_deploy:
     runs-on: ubuntu-latest
     steps:
-      # Step 1: Check out your repository code
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-      # Step 2: NEW - Build your React application
-      # This installs all your dependencies and runs the 'npm run build' command
-      # which creates the 'dist' folder that Firebase needs to deploy.
-      - run: npm ci
-      - run: npm run build
-
-      # Step 3: CORRECTED - Deploy to Firebase Hosting
-      - uses: FirebaseExtended/action-hosting-deploy@v0
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
         with:
-          repoToken: '${{ secrets.GITHUB_TOKEN }}'
-          firebaseServiceAccount: '${{ secrets.FIREBASE_SERVICE_ACCOUNT_AGRIVANCE_BC8B1 }}' # <-- THIS IS THE CRITICAL FIX
-          channelId: live
-          projectId: agrivance-bc8b1
+          node-version: '20'
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build project
+        run: npm run build
+        env:
+          VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
+          VITE_GEMINI_API_KEY: ${{ secrets.VITE_GEMINI_API_KEY }}
+          VITE_OPENWEATHERMAP_API_KEY: ${{ secrets.VITE_OPENWEATHERMAP_API_KEY }}
+
+      - name: Deploy to Firebase
+        uses: google-github-actions/deploy-firebase@v0
+        with:
+          project_id: agrivance-bc8b1
+          service_account_key: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_AGRIVANCE_BC8B1 }}
