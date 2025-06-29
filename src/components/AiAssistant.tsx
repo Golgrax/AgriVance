@@ -8,9 +8,11 @@ import MicOffIcon from '@mui/icons-material/MicOff';
 import { GoogleGenerativeAI, FunctionDeclaration, Part, SchemaType } from '@google/generative-ai';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { collection, query, where, getDocs } from 'firebase/firestore';
+// UPDATED: All firestore imports are now grouped together correctly
+import { collection, query, where, getDocs, addDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 
+// --- SETUP (This section is unchanged and correct) ---
 interface CustomWindow extends Window {
   SpeechRecognition: any;
   webkitSpeechRecognition: any;
@@ -24,6 +26,9 @@ if (!GEMINI_API_KEY) console.error("Gemini API key not found.");
 
 const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
 
+// --- TOOL DEFINITIONS (We will add the new tool here) ---
+
+// Tool 1: Get Inventory (Unchanged from your working version)
 const getInventoryTool: FunctionDeclaration = {
   name: "getInventoryQuantity",
   description: "Gets the quantity of a specific item from the inventory database.",
@@ -39,20 +44,43 @@ const getInventoryTool: FunctionDeclaration = {
   },
 };
 
+// NEW: Tool 2: Schedule a Task
+const addTaskTool: FunctionDeclaration = {
+  name: "scheduleTask",
+  description: "Schedules a new task on the production calendar. Use this when a user wants to add a reminder, schedule an event, or plan an activity.",
+  parameters: {
+    type: SchemaType.OBJECT,
+    properties: {
+      title: { type: SchemaType.STRING, description: "The title of the task." },
+      date: { type: SchemaType.STRING, description: "The date for the task in YYYY-MM-DD format. The AI must infer this date from the user's query (e.g., 'next Friday')." },
+      category: { 
+        type: SchemaType.STRING, 
+        description: "The category of the task. Must be one of: 'Planting', 'Harvesting', 'Maintenance', 'Logistics'."
+      },
+    },
+    required: ["title", "date", "category"],
+  },
+};
+
+// --- SYSTEM PROMPT (UPDATED) ---
+// We add instructions for the new tool.
 const systemPrompt = `You are "AgriVance AI", a specialized assistant for the AgriVance software platform. Your purpose is to help users with topics related to agriculture, farming techniques, crop management, manufacturing processes, supply chain logistics, and inventory management.
 
-Your answers should be helpful, concise, and formatted using Markdown for clarity (e.g., using lists, bold text, etc.).
+Your answers should be helpful, concise, and formatted using Markdown.
 
-When a user asks about inventory, use the getInventoryQuantity tool to get real data.
+When a user asks about inventory, use the getInventoryQuantity tool. When they ask to schedule something, use the scheduleTask tool.
 
-IMPORTANT RULE: If a user asks a question that is NOT related to these topics (e.g., questions about history, celebrities, poetry, movies, or general knowledge), you MUST politely decline. Your response must clearly state that you are an agricultural and manufacturing assistant and cannot answer the unrelated question. Do not attempt to answer it anyway.`;
+IMPORTANT RULE: If a user asks a question that is NOT related to these topics (e.g., questions about history, celebrities, poetry), you MUST politely decline and state your purpose.`;
 
+// --- MODEL INITIALIZATION (UPDATED) ---
+// We add the new tool to the model's awareness.
 const model = genAI.getGenerativeModel({
   model: "gemini-1.5-flash",
-  tools: [{ functionDeclarations: [getInventoryTool] }],
+  tools: [{ functionDeclarations: [getInventoryTool, addTaskTool] }],
   systemInstruction: systemPrompt,
 });
 
+// --- THE REACT COMPONENT ---
 const AiAssistant = () => {
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState('');
@@ -61,28 +89,39 @@ const AiAssistant = () => {
   const [error, setError] = useState('');
   const [isListening, setIsListening] = useState(false);
 
+  // --- TOOL IMPLEMENTATIONS ---
   const getInventoryQuantity = async (itemName: string): Promise<string> => {
     try {
       const searchName = itemName.toLowerCase();
       const inventoryCol = collection(db, "inventory");
       const q = query(inventoryCol, where("name_lowercase", "==", searchName));
       const querySnapshot = await getDocs(q);
-      
       if (querySnapshot.empty) {
         return `I couldn't find any items named '${itemName}' in the inventory. Please check the spelling.`;
       }
-      
       let totalQuantity = 0;
       let unit = '';
       querySnapshot.forEach((doc) => {
         totalQuantity += doc.data().quantity;
         unit = doc.data().unit;
       });
-      
       return `I found a total of ${totalQuantity} ${unit} for '${itemName}'.`;
     } catch (e) {
       console.error("Firestore query error: ", e);
       return "There was an error accessing the inventory database.";
+    }
+  };
+  
+  // NEW: The actual TypeScript function that adds a task to Firestore
+  const scheduleTask = async (title: string, date: string, category: string): Promise<string> => {
+    try {
+      await addDoc(collection(db, 'productionTasks'), {
+        title, date, category, status: 'To Do',
+      });
+      return `Ok, I've scheduled "${title}" for ${date} on the calendar.`;
+    } catch (e) {
+      console.error("Error scheduling task: ", e);
+      return "I'm sorry, I failed to schedule the task in the database.";
     }
   };
 
@@ -95,16 +134,13 @@ const AiAssistant = () => {
       setError("Sorry, your browser doesn't support voice recognition.");
       return;
     }
-
     const recognition = new SpeechRecognition();
     recognition.lang = 'en-US';
     recognition.interimResults = false;
     recognition.maxAlternatives = 1;
-
     if (!isListening) {
       setIsListening(true);
       recognition.start();
-
       recognition.onresult = (event: any) => {
         const speechResult = event.results[0][0].transcript;
         setInput(speechResult);
@@ -124,9 +160,9 @@ const AiAssistant = () => {
     }
   };
 
+  // --- MAIN SEND LOGIC (UPDATED) ---
   const handleSend = async () => {
     if (!input.trim() || !GEMINI_API_KEY) return;
-
     const userMessage: Message = { sender: 'user', text: input };
     setMessages(prev => [...prev, userMessage]);
     const chat = model.startChat();
@@ -140,12 +176,15 @@ const AiAssistant = () => {
       const call = result.response.functionCalls()?.[0];
 
       if (call) {
-        setMessages(prev => [...prev, { sender: 'ai', text: `*Checking the database...*` }]);
+        setMessages(prev => [...prev, { sender: 'ai', text: `*Running command...*` }]);
         let toolResult: string = "An unknown error occurred with the tool.";
-        
-        const args = call.args as { itemName?: string };
+        const args = call.args as any;
+
+        // UPDATED: Check for which tool to run
         if (call.name === 'getInventoryQuantity' && args.itemName) {
           toolResult = await getInventoryQuantity(args.itemName);
+        } else if (call.name === 'scheduleTask' && args.title && args.date && args.category) {
+          toolResult = await scheduleTask(args.title, args.date, args.category);
         }
 
         const result2 = await chat.sendMessage([
@@ -165,6 +204,7 @@ const AiAssistant = () => {
     }
   };
   
+  // --- JSX RENDER (Unchanged and Complete) ---
   return (
     <>
       <Fab color="primary" aria-label="ai-assistant" onClick={handleOpen} sx={{ position: 'fixed', bottom: 32, right: 32 }} >

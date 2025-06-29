@@ -45,8 +45,6 @@ const InventoryTable = () => {
         rows={rows}
         columns={columns}
         loading={loading}
-        /* THE FIX: We have removed the getRowId prop entirely. */
-        /* DataGrid will automatically use the 'id' property from our 'rows' array. */
         initialState={{
           pagination: {
             paginationModel: { pageSize: 5 },
