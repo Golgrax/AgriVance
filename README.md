@@ -1,116 +1,95 @@
 # AgriVance Software
 
-AgriVance is a smart, all-in-one software platform designed to revolutionize the agricultural and manufacturing industries. It provides innovative solutions to enhance productivity, efficiency, and sustainability by bridging the gap between farm production and factory operations.
+**To revolutionize the agricultural and manufacturing industries through cutting-edge technology, providing innovative software solutions that enhance productivity, efficiency, and sustainability.**
 
-## Core Features
+This project is a web-based platform built with React and TypeScript, designed to be an all-in-one software solution that streamlines agricultural production, factory operations, and supply chain logistics. It leverages real-time data, mapping, and a powerful AI assistant to optimize resource management and improve decision-making.
 
--   **Real-time Inventory Management:** Track raw materials, fertilizers, and finished goods with a live-updating table.
--   **Production Planning Calendar:** A collaborative, real-time calendar to schedule and track tasks like planting, harvesting, and maintenance.
--   **Supply Chain Tracking:** Visualize and monitor shipments from origin to destination on an interactive map.
--   **Interactive Dashboard:** A central hub featuring a weather forecast, a map of the selected farm location, and AI-powered planting suggestions.
--   **AI Virtual Assistant:** A powerful assistant powered by Google's Gemini AI. It can answer questions, fetch data from the inventory, and provide context-aware advice.
--   **Voice Control:** Interact with the AI assistant using voice commands.
-
-## Tech Stack
-
--   **Frontend:** ReactJS with TypeScript, built using Vite.
--   **UI Library:** Material-UI (MUI) for a professional and consistent component library.
--   **Backend & Database:** Firebase (Firestore for database, Firebase Authentication for users).
--   **Mapping:** Leaflet with OpenStreetMap for a 100% free and interactive map solution.
--   **AI Model:** Google Gemini API for the virtual assistant and data analysis.
--   **Deployment:** Automated deployment to Firebase Hosting via GitHub Actions.
+**Live Demo:** [https://agrivance-bc8b1.web.app/](https://agrivance-bc8b1.web.app/)
 
 ---
 
-## Getting Started
+## ✨ Key Features
 
-Follow these steps to get a local copy of the project up and running.
+*   **Real-time Inventory Management:** A full CRUD interface to track raw materials, equipment, and finished goods, backed by Firestore for live updates.
+*   **Interactive Dashboard:** Features a central dashboard with:
+    *   **Live Weather Forecasts:** Fetches and displays real-time weather from OpenWeatherMap for any location.
+    *   **Dynamic Farm Map:** An interactive map powered by Leaflet and OpenStreetMap that visualizes farm locations and updates based on the weather search.
+*   **Production Planning Calendar:** A shared, real-time team calendar built with FullCalendar to schedule and track tasks like planting, harvesting, and maintenance.
+*   **Supply Chain Visualization:** A dedicated page to manage and track shipments from origin to destination, visualized on a live map with custom markers and routes.
+*   **🤖 AI Virtual Assistant (Powered by Google Gemini):**
+    *   **Natural Language Processing:** Understands and responds to user queries in plain English.
+    *   **Context-Aware:** The AI is given a system prompt to keep its responses focused on agriculture, manufacturing, and logistics.
+    *   **Function Calling:** Can query the live Firestore database to answer questions like, *"How much fertilizer do we have?"*
+    *   **Data-Driven Suggestions:** Provides intelligent planting suggestions based on real-time weather data from the dashboard.
+    *   **Voice-to-Text Input:** Supports voice commands via a microphone button using the Web Speech API.
+    *   **Markdown Rendering:** Displays responses in a clean, formatted way.
+
+## 📸 Screenshot
+
+*(coming soon...)*
+
+---
+
+## 🛠️ Tech Stack
+
+*   **Frontend:** React, TypeScript, Vite
+*   **Styling:** Material-UI (MUI)
+*   **Database & Auth:** Firebase (Firestore, Authentication)
+*   **Mapping:** Leaflet & OpenStreetMap
+*   **AI:** Google Gemini API
+*   **External APIs:** OpenWeatherMap API
+*   **Deployment:** Firebase Hosting with GitHub Actions for CI/CD
+
+---
+
+## 🚀 Getting Started
+
+Follow these instructions to get a copy of the project up and running on your local machine for development and testing purposes.
 
 ### Prerequisites
 
-Before you begin, ensure you have the following installed on your system:
--   [Node.js](https://nodejs.org/) (v18 or later recommended)
--   `npm` or `yarn` package manager
--   A code editor like [Visual Studio Code](https://code.visualstudio.com/)
--   A [Google Account](https://accounts.google.com/signup) for Firebase and Google AI services.
+*   Node.js (v18 or later)
+*   NPM
+*   A Firebase account
+*   An OpenWeatherMap API key
+*   A Google AI (Gemini) API key
 
-### Step 1: Clone the Repository
+### Installation
 
-First, clone the project from GitHub to your local machine.
+1.  **Clone the repository:**
+    ```bash
+    git clone https://github.com/Golgrax/AgriVance.git
+    cd AgriVance
+    ```
 
-```bash
-git https://github.com/Golgrax/AgriVance.git
-cd AgriVance
-```
+2.  **Install NPM packages:**
+    ```bash
+    npm install
+    ```
 
-### Step 2: Install Dependencies
+3.  **Set up your Environment Variables:**
+    Create a file named `.env.local` in the root of the project and add your secret keys. Use the `.env.example` below as a template.
 
-Install all the necessary npm packages for the project to run.
+    `.env.local`
+    ```
+    # Get from your Firebase project settings
+    VITE_FIREBASE_API_KEY="AIzaSy..."
+    VITE_FIREBASE_AUTH_DOMAIN="your-project.firebaseapp.com"
+    VITE_FIREBASE_PROJECT_ID="your-project-id"
+    VITE_FIREBASE_STORAGE_BUCKET="your-project.appspot.com"
+    VITE_FIREBASE_MESSAGING_SENDER_ID="123456789"
+    VITE_FIREBASE_APP_ID="1:123456789:web:abcdef123"
+    VITE_FIREBASE_MEASUREMENT_ID="G-ABCDEF123"
 
-```bash
-npm install
-```
+    # Get from the OpenWeatherMap website
+    VITE_OPENWEATHERMAP_API_KEY="your-openweathermap-key"
 
-### Step 3: Set Up Your Firebase Project
+    # Get from Google AI Studio
+    VITE_GEMINI_API_KEY="your-gemini-api-key"
+    ```
 
-This application requires a Firebase project to handle the database and user authentication.
-
-1.  Go to the [Firebase Console](https://console.firebase.google.com/).
-2.  Click **"Add project"** and create a new project named "AgriVance" (or a name of your choice).
-3.  Once the project is created, go to **Build > Authentication** from the left-hand menu. Click "Get started" and enable the **Google** and **Email/Password** sign-in methods.
-4.  Next, go to **Build > Firestore Database**. Click "Create database" and start in **test mode** for now. This allows easy read/write access during development.
-5.  In your project's main page, click the `</>` (Web) icon to register a new web app. Give it a nickname and Firebase will provide you with a `firebaseConfig` object. You will need these keys for the next step.
-
-### Step 4: Configure Environment Variables
-
-This is the most critical step. You must provide your own API keys for the application to connect to its services.
-
-1.  In the root of the project, create a new file named `.env.local`.
-2.  Copy the contents of `.env.local.example` (if it exists) or use the template below and paste it into your new `.env.local` file.
-3.  Fill in the values with your own keys obtained from the services.
-
-**Template for `.env.local`:**
-```
-# Get these from your Firebase project settings (Step 3.5)
-VITE_FIREBASE_API_KEY="apikey"
-VITE_FIREBASE_AUTH_DOMAIN="your-project-id.firebaseapp.com"
-VITE_FIREBASE_PROJECT_ID="your-project-id"
-VITE_FIREBASE_STORAGE_BUCKET="your-project-id.appspot.com"
-VITE_FIREBASE_MESSAGING_SENDER_ID="123456789"
-VITE_FIREBASE_APP_ID="1:123456789:web:abcdef123"
-VITE_FIREBASE_MEASUREMENT_ID="G-ABCDEF123"
-
-# Get this from Google AI Studio
-VITE_GEMINI_API_KEY="googleaiapi"
-
-# Get this from OpenWeatherMap
-VITE_OPENWEATHERMAP_API_KEY="your-openweathermap-key"
-```
-
-**Where to find the keys:**
--   `VITE_FIREBASE_*`: From the `firebaseConfig` object in your Firebase project settings.
--   `VITE_GEMINI_API_KEY`: From [Google AI Studio](https://aistudio.google.com/).
--   `VITE_OPENWEATHERMAP_API_KEY`: From your account page on [OpenWeatherMap](https://openweathermap.org/).
-
-### Step 5: Important Firestore Setup (For AI Search)
-
-For the AI assistant's inventory search to work correctly with different cases (e.g., "corn", "Corn"), you must add a lowercase field to your inventory items.
-When adding a new item, ensure you include a `name_lowercase` field:
-```javascript
-{
-  name: "Corn Seeds",
-  name_lowercase: "corn seeds", // <-- Add this field
-  quantity: 50,
-  // ... other fields
-}
-```
-
-### Step 6: Run the Application
-
-Once your `.env.local` file is configured, you can start the development server.
-
-```bash
-npm run dev
-```
-
-The application should now be running on `http://localhost:5173`.
+4.  **Run the development server:**
+    ```bash
+    npm run dev
+    ```
+    The application will be available at `http://localhost:5173`.
