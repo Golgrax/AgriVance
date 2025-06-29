@@ -1,23 +1,20 @@
-import { Typography, Divider } from '@mui/material';
+import { Typography, Box, Divider } from '@mui/material';
 import AddItemForm from '../components/AddItemForm';
 import InventoryTable from '../components/InventoryTable';
 
 const InventoryPage = () => {
   return (
-    <div>
+    <Box>
       <Typography variant="h4" gutterBottom>
         Inventory Management
       </Typography>
       <Typography paragraph>
-        Add new items to your inventory. The table below will update in real-time.
+        Add, edit, or delete items from your inventory. All changes are reflected in real-time.
       </Typography>
-      
       <AddItemForm />
-
       <Divider sx={{ my: 2 }} />
-
       <InventoryTable />
-    </div>
+    </Box>
   );
 };
 

@@ -1,9 +1,12 @@
 import { useState, useMemo } from 'react';
-import { Paper, Box, Typography, Stack, Select, MenuItem, FormControl, InputLabel, Divider } from '@mui/material';
+// UPDATED: Import all necessary MUI components
+import { Paper, Box, Typography, Stack, Select, MenuItem, FormControl, InputLabel, Divider, List, ListItem, ListItemText } from '@mui/material';
 import { useCollection } from 'react-firebase-hooks/firestore';
-import { collection, orderBy, query, doc, updateDoc } from 'firebase/firestore';
+// UPDATED: Import all necessary Firestore functions
+import { collection, doc, getDocs, query, where, writeBatch, orderBy, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase';
 import { type Shipment } from '../types';
+
 import ShipmentList from '../components/ShipmentList';
 import AddShipmentForm from '../components/AddShipmentForm';
 import AddLocationForm from '../components/AddLocationForm';
@@ -29,14 +32,85 @@ const SupplyChainPage = () => {
 
   const handleSelectShipment = (shipment: Shipment) => setSelectedShipment(shipment);
   
-  const handleStatusChange = async (newStatus: Shipment['status']) => {
-    if (!selectedShipment?.id) return;
-    setIsUpdating(true);
+const handleStatusChange = async (newStatus: Shipment['status']) => {
+  if (!selectedShipment?.id || !selectedShipment.contents) return;
+
+  if (selectedShipment.status === 'Delivered') {
+    alert("This shipment has already been delivered and its inventory processed. No further changes can be made.");
+    return;
+  }
+  
+  if (selectedShipment.status === 'In Transit' && newStatus === 'Pending') {
+    alert("Cannot revert a shipment that is already in transit back to pending.");
+    return;
+  }
+
+  setIsUpdating(true);
+  
+  try {
+    const batch = writeBatch(db);
     const shipmentRef = doc(db, 'shipments', selectedShipment.id);
-    await updateDoc(shipmentRef, { status: newStatus });
+    batch.update(shipmentRef, { status: newStatus });
+
+    // --- LOGIC FOR DEDUCTING FROM ORIGIN ---
+    if (newStatus === 'In Transit') {
+      for (const item of selectedShipment.contents) {
+        const q = query(
+          collection(db, "inventory"), 
+          where("name_lowercase", "==", item.itemName.toLowerCase()),
+          where("location", "==", selectedShipment.origin.name)
+        );
+        const snapshot = await getDocs(q);
+        
+        if (!snapshot.empty) {
+          const inventoryDoc = snapshot.docs[0];
+          const currentQuantity = inventoryDoc.data().quantity;
+          const newQuantity = currentQuantity - item.quantity;
+          
+          if (newQuantity < 0) {
+            throw new Error(`Not enough ${item.itemName} at ${selectedShipment.origin.name} to ship. Operation cancelled.`);
+          }
+          batch.update(inventoryDoc.ref, { quantity: newQuantity });
+        } else {
+          throw new Error(`Cannot find ${item.itemName} at ${selectedShipment.origin.name}. Operation cancelled.`);
+        }
+      }
+    }
+    // --- LOGIC FOR ADDING TO DESTINATION ---
+    else if (newStatus === 'Delivered') {
+      for (const item of selectedShipment.contents) {
+        const q = query(
+          collection(db, "inventory"), 
+          where("name_lowercase", "==", item.itemName.toLowerCase()),
+          where("location", "==", selectedShipment.destination.name)
+        );
+        const snapshot = await getDocs(q);
+        
+        if (!snapshot.empty) {
+          const inventoryDoc = snapshot.docs[0];
+          const newQuantity = inventoryDoc.data().quantity + item.quantity;
+          batch.update(inventoryDoc.ref, { quantity: newQuantity });
+        } else {
+          const newInventoryRef = doc(collection(db, "inventory"));
+          batch.set(newInventoryRef, {
+            name: item.itemName, name_lowercase: item.itemName.toLowerCase(),
+            quantity: item.quantity, unit: item.unit,
+            location: selectedShipment.destination.name, lastUpdated: serverTimestamp(),
+          });
+        }
+      }
+    }
+    
+    await batch.commit();
     setSelectedShipment(prev => prev ? { ...prev, status: newStatus } : null);
-    setIsUpdating(false);
-  };
+    
+  } catch (error: any) {
+    console.error("Error updating shipment and inventory: ", error);
+    alert(`Operation failed: ${error.message}`); // Show the specific error to the user
+  }
+  
+  setIsUpdating(false);
+};
 
   const mapCenter: LatLngExpression = selectedShipment 
     ? [selectedShipment.currentLocation.lat, selectedShipment.currentLocation.lng] 
@@ -46,12 +120,16 @@ const SupplyChainPage = () => {
     <Stack spacing={3}>
       <Typography variant="h4" gutterBottom>Supply Chain & Logistics</Typography>
       <Stack direction={{ xs: 'column', lg: 'row' }} spacing={3}>
+        
+        {/* Left Column */}
         <Box sx={{ width: '100%', lg: { width: '25%' } }}>
           <Stack spacing={3}>
             <Paper elevation={3} sx={{p: 2}}><AddLocationForm /></Paper>
             <Paper elevation={3} sx={{p: 2}}><AddShipmentForm /></Paper>
           </Stack>
         </Box>
+
+        {/* Middle Column */}
         <Box sx={{ width: '100%', lg: { width: '25%' } }}>
           <Paper elevation={3} sx={{ height: '80vh', display: 'flex', flexDirection: 'column' }}>
             <Typography variant="h6" sx={{ p: 2 }}>All Shipments</Typography>
@@ -63,6 +141,8 @@ const SupplyChainPage = () => {
             </Box>
           </Paper>
         </Box>
+        
+        {/* Right Column */}
         <Box sx={{ width: '100%', lg: { width: '50%' } }}>
           <Paper elevation={2} sx={{ p: 2, height: '80vh' }}>
             {selectedShipment ? (
@@ -76,7 +156,20 @@ const SupplyChainPage = () => {
                     <MenuItem value="Delivered">Delivered</MenuItem>
                   </Select>
                 </FormControl>
-                <Box sx={{ flexGrow: 1, borderRadius: '8px', overflow: 'hidden' }}>
+                
+                {/* NEW: Display shipment contents */}
+                <Typography variant="subtitle1" sx={{ mt: 1 }}>Contents:</Typography>
+                <Paper variant="outlined" sx={{ p: 1, my: 1 }}>
+                  <List dense>
+                    {selectedShipment.contents?.map((item, index) => (
+                      <ListItem key={index}>
+                        <ListItemText primary={item.itemName} secondary={`${item.quantity} ${item.unit}`} />
+                      </ListItem>
+                    ))}
+                  </List>
+                </Paper>
+
+                <Box sx={{ flexGrow: 1, borderRadius: '8px', overflow: 'hidden', mt: 2 }}>
                   <MapContainer center={mapCenter} zoom={11} style={{ height: '100%', width: '100%' }}>
                     <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
                     <Marker position={[selectedShipment.currentLocation.lat, selectedShipment.currentLocation.lng]} />

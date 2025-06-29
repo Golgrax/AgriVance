@@ -8,11 +8,9 @@ import MicOffIcon from '@mui/icons-material/MicOff';
 import { GoogleGenerativeAI, FunctionDeclaration, Part, SchemaType } from '@google/generative-ai';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-// UPDATED: All firestore imports are now grouped together correctly
 import { collection, query, where, getDocs, addDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 
-// --- SETUP (This section is unchanged and correct) ---
 interface CustomWindow extends Window {
   SpeechRecognition: any;
   webkitSpeechRecognition: any;
@@ -26,9 +24,6 @@ if (!GEMINI_API_KEY) console.error("Gemini API key not found.");
 
 const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
 
-// --- TOOL DEFINITIONS (We will add the new tool here) ---
-
-// Tool 1: Get Inventory (Unchanged from your working version)
 const getInventoryTool: FunctionDeclaration = {
   name: "getInventoryQuantity",
   description: "Gets the quantity of a specific item from the inventory database.",
@@ -44,7 +39,6 @@ const getInventoryTool: FunctionDeclaration = {
   },
 };
 
-// NEW: Tool 2: Schedule a Task
 const addTaskTool: FunctionDeclaration = {
   name: "scheduleTask",
   description: "Schedules a new task on the production calendar. Use this when a user wants to add a reminder, schedule an event, or plan an activity.",
@@ -62,8 +56,6 @@ const addTaskTool: FunctionDeclaration = {
   },
 };
 
-// --- SYSTEM PROMPT (UPDATED) ---
-// We add instructions for the new tool.
 const systemPrompt = `You are "AgriVance AI", a specialized assistant for the AgriVance software platform. Your purpose is to help users with topics related to agriculture, farming techniques, crop management, manufacturing processes, supply chain logistics, and inventory management.
 
 Your answers should be helpful, concise, and formatted using Markdown.
@@ -72,15 +64,12 @@ When a user asks about inventory, use the getInventoryQuantity tool. When they a
 
 IMPORTANT RULE: If a user asks a question that is NOT related to these topics (e.g., questions about history, celebrities, poetry), you MUST politely decline and state your purpose.`;
 
-// --- MODEL INITIALIZATION (UPDATED) ---
-// We add the new tool to the model's awareness.
 const model = genAI.getGenerativeModel({
   model: "gemini-1.5-flash",
   tools: [{ functionDeclarations: [getInventoryTool, addTaskTool] }],
   systemInstruction: systemPrompt,
 });
 
-// --- THE REACT COMPONENT ---
 const AiAssistant = () => {
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState('');
@@ -89,7 +78,6 @@ const AiAssistant = () => {
   const [error, setError] = useState('');
   const [isListening, setIsListening] = useState(false);
 
-  // --- TOOL IMPLEMENTATIONS ---
   const getInventoryQuantity = async (itemName: string): Promise<string> => {
     try {
       const searchName = itemName.toLowerCase();
@@ -112,7 +100,6 @@ const AiAssistant = () => {
     }
   };
   
-  // NEW: The actual TypeScript function that adds a task to Firestore
   const scheduleTask = async (title: string, date: string, category: string): Promise<string> => {
     try {
       await addDoc(collection(db, 'productionTasks'), {
@@ -160,7 +147,6 @@ const AiAssistant = () => {
     }
   };
 
-  // --- MAIN SEND LOGIC (UPDATED) ---
   const handleSend = async () => {
     if (!input.trim() || !GEMINI_API_KEY) return;
     const userMessage: Message = { sender: 'user', text: input };
@@ -180,7 +166,6 @@ const AiAssistant = () => {
         let toolResult: string = "An unknown error occurred with the tool.";
         const args = call.args as any;
 
-        // UPDATED: Check for which tool to run
         if (call.name === 'getInventoryQuantity' && args.itemName) {
           toolResult = await getInventoryQuantity(args.itemName);
         } else if (call.name === 'scheduleTask' && args.title && args.date && args.category) {
@@ -204,7 +189,6 @@ const AiAssistant = () => {
     }
   };
   
-  // --- JSX RENDER (Unchanged and Complete) ---
   return (
     <>
       <Fab color="primary" aria-label="ai-assistant" onClick={handleOpen} sx={{ position: 'fixed', bottom: 32, right: 32 }} >
