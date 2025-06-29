@@ -6,9 +6,8 @@ const OWM_API_KEY = import.meta.env.VITE_OPENWEATHERMAP_API_KEY;
 
 // We use two different API endpoints: one to get coordinates, one to get the forecast
 const FORECAST_API_URL = 'https://api.openweathermap.org/data/2.5/forecast';
-const GEO_API_URL = 'http://api.openweathermap.org/geo/1.0/direct';
+const GEO_API_URL = 'https://api.openweathermap.org/geo/1.0/direct';
 
-// NEW: Define a type for the data we will pass up to the parent component
 export interface CurrentWeather {
   city: string;
   lat: number;
